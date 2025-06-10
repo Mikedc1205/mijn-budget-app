@@ -3,6 +3,15 @@ import '../main.dart'; // Voor toegang tot model en transacties!
 import 'transaction_list_scherm.dart';
 import 'voeg_transactie_toe_scherm.dart';
 
+// Zorg ervoor dat 'maandNamen' hier of in main.dart gedefinieerd is.
+// Als het in main.dart staat en je hebt het import-statement correct, is het goed.
+// Anders, voeg deze lijst toe:
+const List<String> maandNamen = [
+  'januari', 'februari', 'maart', 'april', 'mei', 'juni',
+  'juli', 'augustus', 'september', 'oktober', 'november', 'december'
+];
+
+
 class BudgetScherm extends StatefulWidget {
 
   // Callback zodra transacties of spaarsaldi veranderen:
@@ -80,131 +89,30 @@ class _BudgetSchermState extends State<BudgetScherm> {
     return totaalInkomen - totaalUitgaven;
   }
 
-  @override
-  Widget build(BuildContext context) {
+  // Deze functie is al correct in je oorspronkelijke code, maar ik neem 'm voor de volledigheid mee.
+  Widget saldoKop() {
     final saldo = berekenSaldo();
     final isPositief = saldo >= 0;
-
-    Widget saldoKop() {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Text(
-          '€ ${saldo.toStringAsFixed(2)}',
-          style: TextStyle(
-            fontSize: 32,
-            color: isPositief ? Colors.green : Colors.red,
-            fontWeight: FontWeight.bold,
-          ),
-          textAlign: TextAlign.center,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Text(
+        '€ ${saldo.toStringAsFixed(2)}',
+        style: TextStyle(
+          fontSize: 32,
+          color: isPositief ? Colors.green : Colors.red,
+          fontWeight: FontWeight.bold,
         ),
-      );
-    }
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
 
-    Widget periodeSelector() {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-        child: Row(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_left),
-              onPressed: () {
-                setState(() {
-                  if (modus == 'week') {
-                    huidigeDatum = huidigeDatum.subtract(const Duration(days: 7));
-                  } else if (modus == 'maand') {
-                    huidigeDatum = DateTime(
-                      huidigeDatum.year,
-                      huidigeDatum.month - 1,
-                      1,
-                    );
-                  } else {
-                    huidigeDatum = DateTime(huidigeDatum.year - 1, 1, 1);
-                  }
-                });
-              },
-            ),
-
-            // Maak de periode‐tekst flexibel, zodat hij niet uit het scherm stroomt
-            Expanded(
-              child: Text(
-                getPeriodeTekst(),
-                style: const TextStyle(fontSize: 16),
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-
-            IconButton(
-              icon: const Icon(Icons.arrow_right),
-              onPressed: () {
-                setState(() {
-                  if (modus == 'week') {
-                    huidigeDatum = huidigeDatum.add(const Duration(days: 7));
-                  } else if (modus == 'maand') {
-                    huidigeDatum = DateTime(
-                      huidigeDatum.year,
-                      huidigeDatum.month + 1,
-                      1,
-                    );
-                  } else {
-                    huidigeDatum = DateTime(huidigeDatum.year + 1, 1, 1);
-                  }
-                });
-              },
-            ),
-
-            const SizedBox(width: 8),
-
-            // Zorg dat ToggleButtons verkleint als het te breed wordt
-            Flexible(
-              child: ToggleButtons(
-                isSelected: [
-                  modus == 'week',
-                  modus == 'maand',
-                  modus == 'jaar',
-                ],
-                onPressed: (index) {
-                  setState(() {
-                    if (index == 0) {
-                      modus = 'week';
-                      huidigeDatum = DateTime.now()
-                          .subtract(Duration(days: DateTime.now().weekday - 1));
-                    }
-                    if (index == 1) {
-                      modus = 'maand';
-                      huidigeDatum = DateTime(
-                        DateTime.now().year,
-                        DateTime.now().month,
-                        1,
-                      );
-                    }
-                    if (index == 2) {
-                      modus = 'jaar';
-                      huidigeDatum = DateTime(DateTime.now().year, 1, 1);
-                    }
-                  });
-                },
-                children: const [
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Text('Week'),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Text('Maand'),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Text('Jaar'),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
+  @override
+  Widget build(BuildContext context) {
+    // saldo en isPositief worden nu gebruikt in saldoKop(), dus hier hoeven ze niet apart gedeclareerd te worden,
+    // tenzij je ze ergens anders in de build methode ook direct wilt gebruiken.
+    // final saldo = berekenSaldo();
+    // final isPositief = saldo >= 0;
 
     Widget overzichtKaarten() {
       return Expanded(
@@ -314,15 +222,58 @@ class _BudgetSchermState extends State<BudgetScherm> {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            getPeriodeTekst(),
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
+
+          // De nieuwe Row met navigatiepijlen en de periode tekst
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_left),
+                onPressed: () {
+                  setState(() {
+                    if (modus == 'week') {
+                      huidigeDatum = huidigeDatum.subtract(const Duration(days: 7));
+                    } else if (modus == 'maand') {
+                      huidigeDatum = DateTime(
+                        huidigeDatum.year,
+                        huidigeDatum.month - 1,
+                        1,
+                      );
+                    } else {
+                      huidigeDatum = DateTime(huidigeDatum.year - 1, 1, 1);
+                    }
+                  });
+                },
+              ),
+              Text(
+                getPeriodeTekst(),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.arrow_right),
+                onPressed: () {
+                  setState(() {
+                    if (modus == 'week') {
+                      huidigeDatum = huidigeDatum.add(const Duration(days: 7));
+                    } else if (modus == 'maand') {
+                      huidigeDatum = DateTime(
+                        huidigeDatum.year,
+                        huidigeDatum.month + 1,
+                        1,
+                      );
+                    } else {
+                      huidigeDatum = DateTime(huidigeDatum.year + 1, 1, 1);
+                    }
+                  });
+                },
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
+
+          const SizedBox(height: 8), // Ruimte tussen navigatie en ToggleButtons
           Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -402,24 +353,6 @@ class _BudgetSchermState extends State<BudgetScherm> {
           }
         },
         child: const Icon(Icons.add),
-      ),
-    );
-
-  }
-
-  Widget saldoKop() {
-    final saldo = berekenSaldo();
-    final isPositief = saldo >= 0;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      child: Text(
-        '€ ${saldo.toStringAsFixed(2)}',
-        style: TextStyle(
-          fontSize: 32,
-          color: isPositief ? Colors.green : Colors.red,
-          fontWeight: FontWeight.bold,
-        ),
-        textAlign: TextAlign.center,
       ),
     );
   }
