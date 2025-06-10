@@ -3,6 +3,7 @@ import '../main.dart'; // Voor toegang tot model en transacties!
 import 'transaction_list_scherm.dart';
 import 'voeg_transactie_toe_scherm.dart';
 
+// Dit is een testcommentaarregel: aangepast door de AI.
 // Zorg ervoor dat 'maandNamen' hier of in main.dart gedefinieerd is.
 // Als het in main.dart staat en je hebt het import-statement correct, is het goed.
 // Anders, voeg deze lijst toe:

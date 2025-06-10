@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'screens/budget_scherm.dart';
-import 'screens/spaargeld_scherm.dart';
+import 'screens/spaargeld_scherm.dart'; // Importeer het bijgewerkte SpaargeldScherm
 import 'screens/opties_scherm.dart';
 
 import 'package:flutter/material.dart';
@@ -21,7 +21,7 @@ class Transactie {
   double bedrag;
   String type; // 'inkomen', 'uitgave' of 'spaar'
   String categorie;
-  String bank; // 'KBC', 'Keytrade', 'Belfius'
+  String bank; // 'KBC', 'Keytrade', 'Belfius', 'Cash'
   String omschrijving;
   String herhaling; // 'Geen', 'Wekelijks', 'Maandelijks', 'Jaarlijks'
   bool uitSpaarpot;
@@ -104,9 +104,10 @@ class _MijnBudgetAppState extends State<MijnBudgetApp> {
   int _currentIndex = 0;
   late Future<void> _initialLoad; // om in initState te laden
 
+  // Veranderd: SpaargeldScherm is nu geen const meer in deze lijst
   final List<Widget> _schermen = [
     const BudgetScherm(),
-    const SpaargeldScherm(),
+    SpaargeldScherm(), // GEEN 'const' meer hier
     const OptiesScherm(),
   ];
 
@@ -204,7 +205,10 @@ class _MijnBudgetAppState extends State<MijnBudgetApp> {
                     onTransactieChanged: _saveData,
                   );
                 } else if (w is SpaargeldScherm) {
-                  return const SpaargeldScherm();
+                  // SpaargeldScherm krijgt nu de _saveData callback mee
+                  return SpaargeldScherm(
+                    onSpaargeldChanged: _saveData,
+                  );
                 } else if (w is OptiesScherm) {
                   return OptiesScherm(
                     onWisAlles: () async {
@@ -245,21 +249,3 @@ class _MijnBudgetAppState extends State<MijnBudgetApp> {
     );
   }
 }
-
-// ------------ BudgetScherm ------------
-
-
-// ------------ TransactionListScherm ------------
-
-
-// ------------ VoegTransactieToeScherm ------------
-
-
-
-// ------------ SpaargeldScherm ------------
-
-
-
-// ------------ OptiesScherm ------------
-
-
