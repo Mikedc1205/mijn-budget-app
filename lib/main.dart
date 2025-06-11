@@ -37,8 +37,8 @@ class Transactie {
     this.uitSpaarpot = false,
   });
 
-  // Omzetten naar een Map zodat we hem in JSON kunnen opslaan
-  Map<String, dynamic> toMap() {
+  // Omzetten naar een Map (voor JSON opslag) - Nu 'toJson()' genoemd
+  Map<String, dynamic> toJson() {
     return {
       'datum': datum.toIso8601String(),
       'bedrag': bedrag,
@@ -51,17 +51,17 @@ class Transactie {
     };
   }
 
-  // Factory om vanuit een Map (parsed uit JSON) weer een Transactie te maken
-  factory Transactie.fromMap(Map<String, dynamic> map) {
+  // Factory om vanuit een Map (parsed uit JSON) weer een Transactie te maken - Nu 'fromJson()' genoemd
+  factory Transactie.fromJson(Map<String, dynamic> json) {
     return Transactie(
-      datum: DateTime.parse(map['datum'] as String),
-      bedrag: (map['bedrag'] as num).toDouble(),
-      type: map['type'] as String,
-      categorie: map['categorie'] as String,
-      bank: map['bank'] as String,
-      omschrijving: map['omschrijving'] as String,
-      herhaling: map['herhaling'] as String,
-      uitSpaarpot: map['uitSpaarpot'] as bool,
+      datum: DateTime.parse(json['datum'] as String),
+      bedrag: (json['bedrag'] as num).toDouble(),
+      type: json['type'] as String,
+      categorie: json['categorie'] as String,
+      bank: json['bank'] as String,
+      omschrijving: json['omschrijving'] as String,
+      herhaling: json['herhaling'] as String,
+      uitSpaarpot: json['uitSpaarpot'] as bool,
     );
   }
 }
@@ -104,11 +104,14 @@ class _MijnBudgetAppState extends State<MijnBudgetApp> {
   int _currentIndex = 0;
   late Future<void> _initialLoad; // om in initState te laden
 
-  // Veranderd: SpaargeldScherm is nu geen const meer in deze lijst
+  // Veranderd: OptiesScherm is nu geen const meer in deze lijst en geeft callbacks mee
   final List<Widget> _schermen = [
     const BudgetScherm(),
-    SpaargeldScherm(), // GEEN 'const' meer hier
-    const OptiesScherm(),
+    SpaargeldScherm(),
+    OptiesScherm(
+      onWisAlles: () async { /* Logica hieronder gedefinieerd */ },
+      onGegevensHersteld: () async { /* Logica hieronder gedefinieerd */ },
+    ),
   ];
 
   @override
@@ -127,7 +130,7 @@ class _MijnBudgetAppState extends State<MijnBudgetApp> {
       try {
         final List<dynamic> parsedList = jsonDecode(txJson);
         transacties = parsedList
-            .map((item) => Transactie.fromMap(item as Map<String, dynamic>))
+            .map((item) => Transactie.fromJson(item as Map<String, dynamic>)) // Gebruik Transactie.fromJson
             .toList();
       } catch (_) {
         transacties = [];
@@ -155,9 +158,9 @@ class _MijnBudgetAppState extends State<MijnBudgetApp> {
   Future<void> _saveData() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // 1) Transacties opslaan
+    // 1) Transacties opslaan - Gebruik Transactie.toJson()
     final List<Map<String, dynamic>> mappedTx =
-    transacties.map((t) => t.toMap()).toList();
+    transacties.map((t) => t.toJson()).toList();
     prefs.setString('transacties', jsonEncode(mappedTx));
 
     // 2) Spaarsaldi opslaan
@@ -197,9 +200,6 @@ class _MijnBudgetAppState extends State<MijnBudgetApp> {
             body: IndexedStack(
               index: _currentIndex,
               children: _schermen.map((w) {
-                // We willen dat de sub‐schermen toegang hebben
-                // tot onze save/ load‐functies: daarom geven we
-                // een callback mee via InheritedWidget‐principe.
                 if (w is BudgetScherm) {
                   return BudgetScherm(
                     onTransactieChanged: _saveData,
@@ -217,6 +217,13 @@ class _MijnBudgetAppState extends State<MijnBudgetApp> {
                       spaarsaldi.updateAll((key, value) => 0.0);
                       // dan opslaan
                       await _saveData();
+                      // Na wissen, opnieuw laden om UI te verversen
+                      await _loadData();
+                    },
+                    onGegevensHersteld: () async {
+                      // Na herstel, opnieuw laden van de gegevens om de UI te vernieuwen
+                      await _loadData();
+                      // De setState wordt getriggerd door _loadData, dus de UI vernieuwt
                     },
                   );
                 }
