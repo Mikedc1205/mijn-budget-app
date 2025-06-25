@@ -1,13 +1,19 @@
+// voeg_spaar_transactie_toe_scherm.dart
+
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Voor datumformattering
+// import 'package:intl/intl.dart'; // Kan grijs zijn als je 'intl' hier nog niet actief gebruikt
 import '../main.dart'; // Voor Transactie model en spaarsaldi map
 
+// =======================================================================
+// DEZE CLASS MOET HIER STAAN!
+// =======================================================================
 class VoegSpaarTransactieToeScherm extends StatefulWidget {
   const VoegSpaarTransactieToeScherm({Key? key}) : super(key: key);
 
   @override
   State<VoegSpaarTransactieToeScherm> createState() => _VoegSpaarTransactieToeSchermState();
 }
+// =======================================================================
 
 class _VoegSpaarTransactieToeSchermState extends State<VoegSpaarTransactieToeScherm> {
   final _formKey = GlobalKey<FormState>();
@@ -86,11 +92,15 @@ class _VoegSpaarTransactieToeSchermState extends State<VoegSpaarTransactieToeSch
               const SizedBox(height: 32),
               ElevatedButton(
                 onPressed: () {
+                  print("DEBUG: 'GELD TOEVOEGEN' knop ingedrukt in VoegSpaarTransactieToeScherm"); // <--- PRINT 1
+
                   if (_formKey.currentState!.validate()) {
+                    print("DEBUG: Formulier validatie GESLAAGD in VoegSpaarTransactieToeScherm"); // <--- PRINT 2 (succes)
                     final bedrag = double.tryParse(_bedragController.text.replaceAll(',', '.')) ?? 0.0;
 
                     // Creëer een 'spaar' transactie
                     final nieuweTransactie = Transactie(
+                      // id: _uuid.v4(), // Zorg ervoor dat je Transactie class een ID genereert als je dit niet doet
                       datum: DateTime.now(), // Huidige datum
                       bedrag: bedrag,
                       type: 'spaar', // Altijd 'spaar' voor dit scherm
@@ -102,7 +112,16 @@ class _VoegSpaarTransactieToeSchermState extends State<VoegSpaarTransactieToeSch
                       herhaling: 'Geen', // Geen herhaling voor handmatige spaartransactie
                       uitSpaarpot: false, // Dit is geen uitgave UIT de spaarpot
                     );
-                    Navigator.pop(context, nieuweTransactie);
+
+                    print("DEBUG: Nieuwe spaartransactie aangemaakt: bedrag=${nieuweTransactie.bedrag}, bank=${nieuweTransactie.bank}, type=${nieuweTransactie.type}"); // <--- PRINT 3
+                    print("DEBUG: Ga nu Navigator.pop aanroepen in VoegSpaarTransactieToeScherm");
+
+                    if (mounted) { // Controleer of de widget nog "gemonteerd" is (goede praktijk)
+                      Navigator.pop(context, nieuweTransactie); // <--- DEZE REGEL IS BELANGRIJK!
+                      // Het geeft 'nieuweTransactie' terug aan het vorige scherm.
+                    }
+                  } else {
+                    print("DEBUG: Formulier validatie MISLUKT in VoegSpaarTransactieToeScherm"); // <--- PRINT 2 (mislukt)
                   }
                 },
                 style: ElevatedButton.styleFrom(

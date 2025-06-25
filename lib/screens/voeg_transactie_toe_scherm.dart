@@ -29,6 +29,24 @@ class _VoegTransactieToeSchermState extends State<VoegTransactieToeScherm> {
 
   // Lijst van banken, deze zou je ook dynamisch kunnen maken via main.dart/shared_preferences
   final List<String> bankNamen = ['KBC', 'Keytrade', 'Belfius', 'Cash'];
+  void _opslaan() {
+    if (_formKey.currentState!.validate()) {
+      final bedrag = double.tryParse(
+        _bedragController.text.replaceAll(',', '.'),
+      ) ?? 0.0;
+      final nieuweTransactie = Transactie(
+        datum: gekozenDatum,
+        bedrag: bedrag,
+        type: geselecteerdType,
+        categorie: geselecteerdeCategorie,
+        bank: geselecteerdeBank,
+        omschrijving: _omschrijvingController.text,
+        herhaling: gekozenHerhaling,
+        uitSpaarpot: uitSpaarpot,
+      );
+      Navigator.pop(context, nieuweTransactie);
+    }
+  }
 
 
   @override
@@ -267,6 +285,19 @@ class _VoegTransactieToeSchermState extends State<VoegTransactieToeScherm> {
           ),
         ),
       ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: ElevatedButton(
+            onPressed: _opslaan, // jouw save-functie
+            child: const Text('OPSLAAN'),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+            ),
+          ),
+        ),
+      ),
+
     );
   }
 }

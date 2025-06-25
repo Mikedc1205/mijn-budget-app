@@ -8,7 +8,8 @@ plugins {
 android {
     namespace = "com.example.mijn_budget_app"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // ndkVersion = flutter.ndkVersion // Optioneel: verwijderd of becommentarieerd
+    ndkVersion = "27.0.12077973"      // Deze is de actieve NDK versie
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

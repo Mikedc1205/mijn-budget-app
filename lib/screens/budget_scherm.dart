@@ -14,60 +14,73 @@ const List<String> maandNamen = [
 
 
 class BudgetScherm extends StatefulWidget {
-
-  // Callback zodra transacties of spaarsaldi veranderen:
   final Future<void> Function()? onTransactieChanged;
+  final Future<void> Function(Transactie transactie) onDeleteTransactie; // Geen vraagteken, dus niet-nullable
+  final Future<void> Function(Transactie transactie)? onAddTransactie;
 
-  const BudgetScherm({Key? key, this.onTransactieChanged}) : super(key: key);
+  const BudgetScherm({
+    Key? key,
+    this.onTransactieChanged,
+    required this.onDeleteTransactie, // Markeer als 'required'
+    this.onAddTransactie,
+  }) : super(key: key);
+
+
 
   @override
   State<BudgetScherm> createState() => _BudgetSchermState();
 }
-
 class _BudgetSchermState extends State<BudgetScherm> {
   DateTime huidigeDatum = DateTime.now();
-  String modus = 'week'; // 'week', 'maand' of 'jaar'
+  String modus = 'maand'; // 'week', 'maand' of 'jaar'
 
   @override
   void initState() {
     super.initState();
-    // Bij openen zetten we de huidigeDatum op de maandag van deze week
-    huidigeDatum = DateTime.now().subtract(
-      Duration(days: DateTime.now().weekday - 1),
-    );
+    // Bij openen zetten we de huidigeDatum op de maandag van deze week <-- Deze logica is nu minder relevant
+    // OF pas aan naar de geselecteerde default modus
+    // Voorbeeld als 'maand' de default is:
+    huidigeDatum = DateTime(DateTime.now().year, DateTime.now().month, 1);
+
+    // Als je 'jaar' als default wilt:
+    // huidigeDatum = DateTime(DateTime.now().year, 1, 1);
   }
 
   DateTime getPeriodeStart() {
-    if (modus == 'week') {
-      return huidigeDatum;
-    } else if (modus == 'maand') {
+    // if (modus == 'week') { // <-- Kan weg of blijven (zal niet meer gekozen worden)
+    //   return huidigeDatum;
+    // } else
+    if (modus == 'maand') {
       return DateTime(huidigeDatum.year, huidigeDatum.month, 1);
-    } else {
+    } else { // 'jaar'
       return DateTime(huidigeDatum.year, 1, 1);
     }
   }
 
   DateTime getPeriodeEind() {
-    if (modus == 'week') {
-      return getPeriodeStart().add(const Duration(days: 6));
-    } else if (modus == 'maand') {
+    // if (modus == 'week') { // <-- Kan weg of blijven
+    //   return getPeriodeStart().add(const Duration(days: 6));
+    // } else
+    if (modus == 'maand') {
       final volgendeMaand =
       DateTime(huidigeDatum.year, huidigeDatum.month + 1, 1);
       return volgendeMaand.subtract(const Duration(days: 1));
-    } else {
+    } else { // 'jaar'
       return DateTime(huidigeDatum.year, 12, 31);
     }
   }
 
+
   String getPeriodeTekst() {
     final start = getPeriodeStart();
     final eind = getPeriodeEind();
-    if (modus == 'week') {
-      return '${start.day} ${maandNamen[start.month - 1]} – '
-          '${eind.day} ${maandNamen[eind.month - 1]} ${eind.year}';
-    } else if (modus == 'maand') {
+    // if (modus == 'week') { // <-- Kan weg of blijven
+    //   return '${start.day} ${maandNamen[start.month - 1]} – '
+    //       '${eind.day} ${maandNamen[eind.month - 1]} ${eind.year}';
+    // } else
+    if (modus == 'maand') {
       return '${maandNamen[huidigeDatum.month - 1]} ${huidigeDatum.year}';
-    } else {
+    } else { // 'jaar'
       return '${huidigeDatum.year}';
     }
   }
@@ -83,7 +96,9 @@ class _BudgetSchermState extends State<BudgetScherm> {
         if (t.type == 'inkomen') {
           totaalInkomen += t.bedrag;
         } else if (t.type == 'uitgave') {
-          totaalUitgaven += t.bedrag;
+           if (!t.uitSpaarpot) { // Veronderstelt dat Transactie een 'uitS
+             totaalUitgaven += t.bedrag;
+           }
         }
       }
     }
@@ -140,6 +155,7 @@ class _BudgetSchermState extends State<BudgetScherm> {
                         modus: modus,
                         start: getPeriodeStart(),
                         eind: getPeriodeEind(),
+                        onDeleteTransactie: widget.onDeleteTransactie, // <-- GEEF DE CA
                       ),
                     ),
                   );
@@ -167,6 +183,7 @@ class _BudgetSchermState extends State<BudgetScherm> {
                         modus: modus,
                         start: getPeriodeStart(),
                         eind: getPeriodeEind(),
+                        onDeleteTransactie: widget.onDeleteTransactie, // <--- ZORG DAT DEZE RE
                       ),
                     ),
                   );
@@ -194,6 +211,8 @@ class _BudgetSchermState extends State<BudgetScherm> {
                         modus: modus,
                         start: getPeriodeStart(),
                         eind: getPeriodeEind(),
+
+                        onDeleteTransactie: widget.onDeleteTransactie, // <--- ZORG DAT DEZE REG
                       ),
                     ),
                   );
@@ -232,12 +251,14 @@ class _BudgetSchermState extends State<BudgetScherm> {
                 icon: const Icon(Icons.arrow_left),
                 onPressed: () {
                   setState(() {
-                    if (modus == 'week') {
-                      huidigeDatum = huidigeDatum.subtract(const Duration(days: 7));
-                    } else if (modus == 'maand') {
+                    // if (modus == 'week') { // <-- Kan weg of blijven
+                    //   huidigeDatum = huidigeDatum.subtract(const Duration(days: 7));
+                    // } else
+                    if (modus == 'maand') {
                       huidigeDatum = DateTime(
                         huidigeDatum.year,
                         huidigeDatum.month - 1,
+
                         1,
                       );
                     } else {
@@ -257,12 +278,14 @@ class _BudgetSchermState extends State<BudgetScherm> {
                 icon: const Icon(Icons.arrow_right),
                 onPressed: () {
                   setState(() {
-                    if (modus == 'week') {
-                      huidigeDatum = huidigeDatum.add(const Duration(days: 7));
-                    } else if (modus == 'maand') {
+                    // if (modus == 'week') { // <-- Kan weg of blijven
+                    //   huidigeDatum = huidigeDatum.add(const Duration(days: 7));
+                    // } else
+                    if (modus == 'maand') {
                       huidigeDatum = DateTime(
                         huidigeDatum.year,
                         huidigeDatum.month + 1,
+
                         1,
                       );
                     } else {
@@ -280,18 +303,18 @@ class _BudgetSchermState extends State<BudgetScherm> {
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: ToggleButtons(
                 isSelected: [
-                  modus == 'week',
+
                   modus == 'maand',
                   modus == 'jaar',
                 ],
                 onPressed: (index) {
                   setState(() {
                     if (index == 0) {
-                      modus = 'week';
+                      modus = 'maand';
                       huidigeDatum = DateTime.now()
                           .subtract(Duration(days: DateTime.now().weekday - 1));
                     }
-                    if (index == 1) {
+                    if (index == 0) {
                       modus = 'maand';
                       huidigeDatum = DateTime(
                         DateTime.now().year,
@@ -299,17 +322,14 @@ class _BudgetSchermState extends State<BudgetScherm> {
                         1,
                       );
                     }
-                    if (index == 2) {
+                    if (index == 1) {
                       modus = 'jaar';
                       huidigeDatum = DateTime(DateTime.now().year, 1, 1);
                     }
                   });
                 },
                 children: const [
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Text('Week'),
-                  ),
+
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 12),
                     child: Text('Maand'),
@@ -328,7 +348,9 @@ class _BudgetSchermState extends State<BudgetScherm> {
           overzichtKaarten(),
         ],
       ),
+      // In budget_scherm.dart -> _BudgetSchermState -> build()
       floatingActionButton: FloatingActionButton(
+        heroTag: 'budget_scherm_fab', // Unieke tag voor dit scherm
         onPressed: () async {
           final result = await Navigator.push<Transactie>(
             context,
@@ -336,21 +358,34 @@ class _BudgetSchermState extends State<BudgetScherm> {
               builder: (_) => const VoegTransactieToeScherm(),
             ),
           );
-          if (result != null) {
-            setState(() {
-              transacties.add(result);
 
-              if (result.type == 'spaar') {
-                spaarsaldi[result.bank] =
-                    (spaarsaldi[result.bank] ?? 0) + result.bedrag;
-              } else if (result.type == 'uitgave' && result.uitSpaarpot) {
-                spaarsaldi[result.bank] =
-                    (spaarsaldi[result.bank] ?? 0) - result.bedrag;
+          if (result != null && mounted) { // Voeg 'mounted' check toe voor veiligheid
+            // Controleer of de onAddTransactie callback is meegegeven
+            if (widget.onAddTransactie != null) {
+              // Roep de centrale _addTransactie functie aan in main.dart
+              await widget.onAddTransactie!(result);
+            } else {
+              // Fallback: Als onAddTransactie niet beschikbaar is, doe het "oude" (minder ideale) werk
+              // Dit blok zou je idealiter willen verwijderen als je onAddTransactie consistent gebruikt
+              print("WAARSCHUWING: onAddTransactie callback niet gebruikt in BudgetScherm. Globale lijsten direct aangepast.");
+              setState(() {
+                transacties.add(result); // Globale lijst
+                if (result.type == 'spaar') {
+                  spaarsaldi[result.bank] = (spaarsaldi[result.bank] ?? 0) + result.bedrag; // Globale map
+                } else if (result.type == 'uitgave' && result.uitSpaarpot) {
+                  spaarsaldi[result.bank] = (spaarsaldi[result.bank] ?? 0) - result.bedrag; // Globale map
+                }
+              });
+              // Roep nog steeds onTransactieChanged aan om op te slaan als _addTransactie dit niet al deed
+              if (widget.onTransactieChanged != null) {
+                await widget.onTransactieChanged!();
               }
-            });
-            if (widget.onTransactieChanged != null) {
-              await widget.onTransactieChanged!();
             }
+
+            // Een setState hier kan nuttig zijn om de UI van BudgetScherm te vernieuwen
+            // als de _addTransactie methode (of de fallback) de data heeft gewijzigd
+            // en BudgetScherm die data direct toont (bijv. in een lijst of grafiek).
+            setState(() {});
           }
         },
         child: const Icon(Icons.add),

@@ -34,11 +34,12 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
-  intl: ^0.19.0
-
+  intl: ^0.20.2
+  uuid: ^4.3.3 # Controleer voor de laatste versie op pub.dev
   shared_preferences: ^2.0.15
   path_provider: ^2.1.3 # <-- DEZE LIJN IS NIEUW
   file_picker: ^8.0.0+1 # <-- DEZE LIJN IS NIEUW
+  flutter_secure_storage: ^9.0.0 # <-- DEZE REGEL IS NIEUW TO
   # … eventuele andere dependencies
 
 

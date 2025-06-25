@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'screens/budget_scherm.dart';
 import 'screens/spaargeld_scherm.dart'; // Importeer het bijgewerkte SpaargeldScherm
 import 'screens/opties_scherm.dart';
-
+import 'package:uuid/uuid.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,10 +13,12 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MijnBudgetApp());
 }
+var _uuid = Uuid();
 
 // ------------ BEGIN Modelklassen ------------
 
 class Transactie {
+  String id; // <-- VOEG DIT VELD TOE
   DateTime datum;
   double bedrag;
   String type; // 'inkomen', 'uitgave' of 'spaar'
@@ -27,6 +29,7 @@ class Transactie {
   bool uitSpaarpot;
 
   Transactie({
+    String? id, // Optioneel: als je een bestaande ID wilt meegeven
     required this.datum,
     required this.bedrag,
     required this.type,
@@ -35,11 +38,13 @@ class Transactie {
     required this.omschrijving,
     required this.herhaling,
     this.uitSpaarpot = false,
-  });
+  }): this.id = id ?? _uuid.v4(); // Genereer een nieuwe unieke ID als er geen wordt meegegeven
+
 
   // Omzetten naar een Map (voor JSON opslag) - Nu 'toJson()' genoemd
   Map<String, dynamic> toJson() {
     return {
+      'id': id, // <-- Neem 'id' op
       'datum': datum.toIso8601String(),
       'bedrag': bedrag,
       'type': type,
@@ -102,77 +107,119 @@ class MijnBudgetApp extends StatefulWidget {
 
 class _MijnBudgetAppState extends State<MijnBudgetApp> {
   int _currentIndex = 0;
-  late Future<void> _initialLoad; // om in initState te laden
-
-  // Veranderd: OptiesScherm is nu geen const meer in deze lijst en geeft callbacks mee
-  final List<Widget> _schermen = [
-    const BudgetScherm(),
-    SpaargeldScherm(),
-    OptiesScherm(
-      onWisAlles: () async { /* Logica hieronder gedefinieerd */ },
-      onGegevensHersteld: () async { /* Logica hieronder gedefinieerd */ },
-    ),
-  ];
+  late Future<void> _initialLoad;
 
   @override
   void initState() {
     super.initState();
-    // Start meteen het laden van opgeslagen data
     _initialLoad = _loadData();
   }
 
   Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
-
-    // 1) Transacties inladen
     final String? txJson = prefs.getString('transacties');
     if (txJson != null) {
       try {
         final List<dynamic> parsedList = jsonDecode(txJson);
         transacties = parsedList
-            .map((item) => Transactie.fromJson(item as Map<String, dynamic>)) // Gebruik Transactie.fromJson
+            .map((item) => Transactie.fromJson(item as Map<String, dynamic>))
             .toList();
       } catch (_) {
         transacties = [];
       }
     }
-
-    // 2) Spaarsaldi inladen
     final String? saldiJson = prefs.getString('spaarsaldi');
     if (saldiJson != null) {
       try {
         final Map<String, dynamic> parsedMap = jsonDecode(saldiJson);
-        spaarsaldi = parsedMap.map((key, value) =>
-            MapEntry(key, (value as num).toDouble()));
+        spaarsaldi =
+            parsedMap.map((key, value) => MapEntry(key, (value as num).toDouble()));
       } catch (_) {
-        spaarsaldi = {
-          'KBC': 0.0,
-          'Keytrade': 0.0,
-          'Belfius': 0.0,
-          'Cash': 0.0,
-        };
+        spaarsaldi = {'KBC': 0.0, 'Keytrade': 0.0, 'Belfius': 0.0, 'Cash': 0.0};
       }
     }
+    // setState is nodig na het laden om de UI te vernieuwen, vooral bij herstel.
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _addTransactie(Transactie transactie) async {
+    setState(() { // setState hier als _MijnBudgetAppState zelf UI heeft die update
+      transacties.add(transactie);
+      if (transactie.type == 'spaar') {
+        spaarsaldi[transactie.bank] = (spaarsaldi[transactie.bank] ?? 0) + transactie.bedrag;
+        print('Spaarsaldo voor ${transactie.bank} bijgewerkt naar: ${spaarsaldi[transactie.bank]}');
+      } else if (transactie.type == 'uitgave' && transactie.uitSpaarpot) {
+        spaarsaldi[transactie.bank] = (spaarsaldi[transactie.bank] ?? 0) - transactie.bedrag;
+      }
+      // Voeg hier eventueel andere logica toe voor andere transactietypes
+    });
+    await _saveData(); // Belangrijk: sla de wijzigingen op!
+    print('Transactie toegevoegd en data opgeslagen.');
+  }
+  Future<void> _deleteTransactie(Transactie transactieToDelete) async {
+    setState(() {
+      transacties.removeWhere((t) => t.id == transactieToDelete.id); // Verwijder op basis van ID
+
+      // Pas ook de spaarsaldi aan als de verwijderde transactie invloed had
+      if (transactieToDelete.type == 'spaar') {
+        // Als een spaartransactie (storting) wordt verwijderd, moet het bedrag van het saldo af
+        spaarsaldi[transactieToDelete.bank] =
+            (spaarsaldi[transactieToDelete.bank] ?? 0) - transactieToDelete.bedrag;
+      } else if (transactieToDelete.type == 'uitgave' && transactieToDelete.uitSpaarpot) {
+        // Als een uitgave UIT een spaarpot wordt verwijderd, moet het bedrag TERUG bij het saldo
+        spaarsaldi[transactieToDelete.bank] =
+            (spaarsaldi[transactieToDelete.bank] ?? 0) + transactieToDelete.bedrag;
+      }
+      // Als het een 'inkomen' of reguliere 'uitgave' (niet uit spaarpot) was,
+      // hoeft spaarsaldi niet aangepast te worden, alleen de transactielijst.
+    });
+    await _saveData(); // Sla de wijzigingen op
+    print('Transactie met ID ${transactieToDelete.id} verwijderd en data opgeslagen.');
   }
 
   Future<void> _saveData() async {
     final prefs = await SharedPreferences.getInstance();
-
-    // 1) Transacties opslaan - Gebruik Transactie.toJson()
     final List<Map<String, dynamic>> mappedTx =
     transacties.map((t) => t.toJson()).toList();
-    prefs.setString('transacties', jsonEncode(mappedTx));
-
-    // 2) Spaarsaldi opslaan
-    prefs.setString('spaarsaldi', jsonEncode(spaarsaldi));
+    await prefs.setString('transacties', jsonEncode(mappedTx));
+    await prefs.setString('spaarsaldi', jsonEncode(spaarsaldi));
   }
 
   @override
   Widget build(BuildContext context) {
+    // Maak de lijst met schermen hier aan in plaats van als instance variable.
+    // Dit lost de foutmeldingen op.
+    final List<Widget> schermen = [
+      BudgetScherm(
+        onTransactieChanged: _saveData,
+        onDeleteTransactie: _deleteTransactie,
+        onAddTransactie: _addTransactie, // Zorg dat deze ook is g
+      ),
+      SpaargeldScherm(
+        onSpaargeldChanged: _saveData,
+        // Voeg hier ook de delete-functie toe als je vanuit dit scherm transacties kan verwijderen.
+        onAddTransactie: _addTransactie, // <--- DEZE IS CRUCIAAL// onDeonAddTransactie: _addTransactie, // <--- DEZE IS CRUCIAALleteTransactie: _deleteTransactie,
+      ),
+      OptiesScherm(
+        onWisAlles: () async {
+          setState(() {
+            transacties.clear();
+            spaarsaldi.updateAll((key, value) => 0.0);
+          });
+          await _saveData();
+        },
+        onGegevensHersteld: () async {
+          // _loadData() roept nu zelf setState aan om de UI te vernieuwen.
+          await _loadData();
+        },
+      ),
+    ];
+
     return FutureBuilder<void>(
       future: _initialLoad,
       builder: (context, snapshot) {
-        // zolang hij aan het laden is, laat je een simpel loading‐indicator zien
         if (snapshot.connectionState != ConnectionState.done) {
           return const MaterialApp(
             home: Scaffold(
@@ -180,18 +227,14 @@ class _MijnBudgetAppState extends State<MijnBudgetApp> {
             ),
           );
         }
-        // Zodra data geladen is, tonen we de app
         return MaterialApp(
           title: 'Mijn Budget',
-          // Zet de app‐wide locale op Nederlands (België)
           locale: const Locale('nl', 'BE'),
-          // Voeg localization‐delegates toe zodat Flutter de NL‐teksten gebruikt
           localizationsDelegates: const [
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          // Geef aan welke locales je ondersteunt
           supportedLocales: const [
             Locale('nl', 'BE'),
           ],
@@ -199,36 +242,7 @@ class _MijnBudgetAppState extends State<MijnBudgetApp> {
           home: Scaffold(
             body: IndexedStack(
               index: _currentIndex,
-              children: _schermen.map((w) {
-                if (w is BudgetScherm) {
-                  return BudgetScherm(
-                    onTransactieChanged: _saveData,
-                  );
-                } else if (w is SpaargeldScherm) {
-                  // SpaargeldScherm krijgt nu de _saveData callback mee
-                  return SpaargeldScherm(
-                    onSpaargeldChanged: _saveData,
-                  );
-                } else if (w is OptiesScherm) {
-                  return OptiesScherm(
-                    onWisAlles: () async {
-                      // eerst de globale data legen
-                      transacties.clear();
-                      spaarsaldi.updateAll((key, value) => 0.0);
-                      // dan opslaan
-                      await _saveData();
-                      // Na wissen, opnieuw laden om UI te verversen
-                      await _loadData();
-                    },
-                    onGegevensHersteld: () async {
-                      // Na herstel, opnieuw laden van de gegevens om de UI te vernieuwen
-                      await _loadData();
-                      // De setState wordt getriggerd door _loadData, dus de UI vernieuwt
-                    },
-                  );
-                }
-                return w;
-              }).toList(),
+              children: schermen, // Gebruik de nieuwe lijst
             ),
             bottomNavigationBar: BottomNavigationBar(
               currentIndex: _currentIndex,
