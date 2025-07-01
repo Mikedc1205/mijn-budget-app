@@ -13,10 +13,16 @@ import 'opties_scherm_html_stub.dart' if (dart.library.html) 'dart:html' as html
 import '../main.dart'; // Voor toegang tot transacties en spaarsaldi (en Transactie model)
 
 class OptiesScherm extends StatelessWidget {
-  final Future<void> Function() onWisAlles;
-  final Function() onGegevensHersteld; // Nieuwe callback om UI te vernieuwen
+  final VoidCallback onWisAlles;
+  final VoidCallback onGegevensHersteld;
+  final VoidCallback onResetPin; // NIEUWE CALLBACK
 
-  const OptiesScherm({Key? key, required this.onWisAlles, required this.onGegevensHersteld}) : super(key: key);
+  const OptiesScherm({
+    Key? key,
+    required this.onWisAlles,
+    required this.onGegevensHersteld,
+    required this.onResetPin, // VOEG TOE AAN CONSTRUCTOR
+  }) : super(key: key);
 
   Future<void> _maakBackup(BuildContext context) async {
     try {
@@ -190,8 +196,8 @@ class OptiesScherm extends StatelessWidget {
               subtitle: const Text('Verwijder alle transacties en spaarsaldi'),
               onTap: () {
                 showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
+                  context: context, // Blijft 'context'
+                  builder: (BuildContext dialogContext) { // VERANDERD NAAR dialogContext
                     return AlertDialog(
                       title: const Text('Gegevens wissen?'),
                       content: const Text(
@@ -199,20 +205,26 @@ class OptiesScherm extends StatelessWidget {
                       actions: <Widget>[
                         TextButton(
                           onPressed: () {
-                            Navigator.of(context).pop();
+                            Navigator.of(dialogContext).pop(); // VERANDERD
                           },
                           child: const Text('Annuleren'),
                         ),
                         TextButton(
-                          onPressed: () async {
-                            await onWisAlles();
-                            Navigator.of(context).pop();
+                          onPressed: () {
+                            // Roep de callback aan zonder await
+                            onWisAlles();
+
+                            // Sluit de dialog
+                            Navigator.of(dialogContext).pop();
+
+                            // Toon een bevestiging
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Alle gegevens zijn gewist.')),
                             );
                           },
                           child: const Text('Wis alles'),
                         ),
+
                       ],
                     );
                   },
@@ -220,6 +232,18 @@ class OptiesScherm extends StatelessWidget {
               },
             ),
           ),
+     // ZORG DAT DEZE KOMMA ER STAAT (NA DE VORIGE CARD)
+
+// NIEUWE CARD VOOR PIN RESET:
+    Card(
+    margin: const EdgeInsets.only(top: 16.0), // Optioneel: beetje ruimte boven de kaart
+    child: ListTile(
+    leading: const Icon(Icons.lock_reset, color: Colors.orange),
+    title: const Text('Pincode opnieuw instellen'),
+    subtitle: const Text('Verwijder huidige pincode en stel nieuwe in'),
+    onTap: onResetPin, // Deze roept de callback aan die je via de constructor hebt meegegeven!
+    ),
+    )
         ],
       ),
     );
