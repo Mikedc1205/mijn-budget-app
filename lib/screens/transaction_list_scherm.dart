@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../main.dart'; // Zorg ervoor dat Transactie hier gedefinieerd is (of importeer het direct)
 
-class TransactionListScherm extends StatefulWidget { // Verander naar StatefulWidget
+class TransactionListScherm extends StatefulWidget {
   final String type;
   final String modus;
   final DateTime start;
   final DateTime eind;
   final void Function(Transactie) onDeleteTransactie;
+  final String? bankNaam; // <--- NIEUW
 
   const TransactionListScherm({
     Key? key,
@@ -16,11 +17,15 @@ class TransactionListScherm extends StatefulWidget { // Verander naar StatefulWi
     required this.start,
     required this.eind,
     required this.onDeleteTransactie,
+    this.bankNaam, // <--- NIEUW
   }) : super(key: key);
 
   @override
   State<TransactionListScherm> createState() => _TransactionListSchermState();
 }
+
+// ... de rest van de _TransactionListSchermState class blijft hieronder
+
 
 class _TransactionListSchermState extends State<TransactionListScherm> { // Maak een State class
   late List<Transactie> gefilterdeTransacties; // Maak dit een state variabele
@@ -32,12 +37,22 @@ class _TransactionListSchermState extends State<TransactionListScherm> { // Maak
   }
 
   void _filterTransacties() {
-    // Gebruik widget.type, widget.start, widget.eind omdat we nu in de State class zijn
     gefilterdeTransacties = transacties.where((t) {
-      return t.type == widget.type &&
-          !t.datum.isBefore(widget.start) &&
-          !t.datum.isAfter(widget.eind);
+      // Start met basis type en datum matching
+      bool typeMatch = t.type == widget.type;
+      bool datumMatch = !t.datum.isBefore(widget.start) && !t.datum.isAfter(widget.eind);
+
+      // Standaard bankMatch op true. Wordt alleen false als bankNaam is opgegeven en niet matcht.
+      bool bankMatch = true;
+      if (widget.bankNaam != null && widget.bankNaam!.isNotEmpty) { // Controleer ook op isNotEmpty
+        bankMatch = t.bank == widget.bankNaam;
+      }
+
+      return typeMatch && datumMatch && bankMatch;
     }).toList();
+
+    // Optioneel: Sorteer de transacties, bijvoorbeeld op datum (nieuwste eerst)
+    gefilterdeTransacties.sort((a, b) => b.datum.compareTo(a.datum));
   }
 
   void _handleDelete(Transactie transactie) {

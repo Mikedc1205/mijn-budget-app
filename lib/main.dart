@@ -188,7 +188,9 @@ class _MainAppScreenState extends State<MainAppScreen> {
       transacties.add(transactie);
       if (transactie.type == 'spaar') {
         spaarsaldi[transactie.bank] = (spaarsaldi[transactie.bank] ?? 0) + transactie.bedrag;
-      } else if (transactie.type == 'uitgave' && transactie.uitSpaarpot) {
+        print("DEBUG [main.dart _addTransactie]: Spaarsaldi voor ${transactie.bank} is nu ${spaarsaldi[transactie.bank]}. Hele map: $spaarsaldi");
+
+    } else if (transactie.type == 'uitgave' && transactie.uitSpaarpot) {
         spaarsaldi[transactie.bank] = (spaarsaldi[transactie.bank] ?? 0) - transactie.bedrag;
       }
     });
@@ -207,6 +209,8 @@ class _MainAppScreenState extends State<MainAppScreen> {
       }
     });
     await _saveData();
+    print("Transactie verwijderd en data opgeslagen via _deleteTransactie");
+
   }
 
   // Functie om de pincode te resetten en terug te navigeren naar AuthWrapper
@@ -257,11 +261,12 @@ class _MainAppScreenState extends State<MainAppScreen> {
         onTransactieChanged: _saveData, // saveData wordt nu lokaal aangeroepen
         onDeleteTransactie: _deleteTransactie,
         onAddTransactie: _addTransactie,
+
       ),
       SpaargeldScherm(
         onSpaargeldChanged: _saveData,
         onAddTransactie: _addTransactie,
-        // onDeleteTransactie: _deleteTransactie, // Indien nodig
+        onDeleteTransactie: _deleteTransactie, // <<<
       ),
       OptiesScherm(
         onWisAlles: () async {
